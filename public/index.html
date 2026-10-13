@@ -1,0 +1,208 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b14">
+  <title>ALIOU META AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080b14;
+      color: #eef4ff;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      padding: 22px 16px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      border-bottom: 1px solid #25324a;
+      background: #0c1220;
+    }
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg,#53c5ff,#7655ff);
+      font-size: 17px;
+      font-weight: bold;
+    }
+    h1 { font-size: 17px; margin: 0 0 5px; }
+    header p { color: #91a0ba; font-size: 12px; margin: 0; }
+    main {
+      max-width: 760px;
+      margin: auto;
+      padding: 25px 14px 150px;
+    }
+    .welcome { text-align: center; padding: 45px 5px 25px; }
+    .symbol {
+      font-size: 36px;
+      color: #83caff;
+      margin-bottom: 18px;
+    }
+    h2 { font-size: 31px; margin: 0 0 12px; }
+    .gradient {
+      background: linear-gradient(90deg,#8bdcff,#a48aff);
+      color: #a6a2ff;
+    }
+    .muted { color: #91a0ba; line-height: 1.6; }
+    #chat { display: flex; flex-direction: column; gap: 15px; }
+    .message {
+      padding: 13px 15px;
+      border-radius: 15px;
+      max-width: 90%;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .user {
+      align-self: flex-end;
+      background: #1a2948;
+      border: 1px solid #34486d;
+    }
+    .assistant {
+      align-self: flex-start;
+      background: #111a2b;
+      border: 1px solid #26334b;
+    }
+    .composer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      background: #080b14;
+      border-top: 1px solid #25324a;
+    }
+    form {
+      display: flex;
+      gap: 9px;
+      max-width: 760px;
+      margin: auto;
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 1px solid #33425e;
+      border-radius: 14px;
+      padding: 14px;
+      color: white;
+      background: #111827;
+      font: inherit;
+      min-width: 0;
+    }
+    button {
+      border: 0;
+      border-radius: 13px;
+      padding: 0 19px;
+      background: linear-gradient(135deg,#53baff,#795fff);
+      color: white;
+      font-weight: bold;
+      font-size: 17px;
+    }
+    button:disabled { opacity: .5; }
+    .note {
+      text-align: center;
+      font-size: 11px;
+      color: #71809a;
+      margin: 10px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">AM</div>
+    <div>
+      <h1>ALIOU META AI</h1>
+      <p>Ton assistant intelligent</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="welcome" id="welcome">
+      <div class="symbol">✦</div>
+      <h2>Salut, <span class="gradient">je suis AM.</span></h2>
+      <p class="muted">
+        Pose-moi une question. Je suis là pour t'aider
+        à apprendre, écrire et trouver des idées.
+      </p>
+    </section>
+    <section id="chat" aria-live="polite"></section>
+  </main>
+
+  <div class="composer">
+    <form id="form">
+      <textarea id="input" rows="1" maxlength="8000"
+        placeholder="Écris ton message..."
+        aria-label="Ton message"></textarea>
+      <button id="send" type="submit">↑</button>
+    </form>
+    <p class="note">ALIOU META AI · Vérifie les informations importantes.</p>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const chat = document.getElementById("chat");
+    const send = document.getElementById("send");
+    const welcome = document.getElementById("welcome");
+
+    let messages = [];
+    let busy = false;
+
+    function showMessage(role, content) {
+      welcome.style.display = "none";
+      const el = document.createElement("div");
+      el.className = "message " + role;
+      el.textContent = content;
+      chat.appendChild(el);
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return el;
+    }
+
+    form.addEventListener("submit", async function(event) {
+      event.preventDefault();
+      const content = input.value.trim();
+      if (!content || busy) return;
+
+      input.value = "";
+      messages.push({ role: "user", content });
+      showMessage("user", content);
+
+      const loading = showMessage("assistant", "ALIOU META AI réfléchit...");
+      busy = true;
+      send.disabled = true;
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Le service IA est indisponible.");
+        }
+
+        if (!data.reply) throw new Error("Aucune réponse reçue.");
+        messages.push({ role: "assistant", content: data.reply });
+        loading.textContent = data.reply;
+      } catch (error) {
+        loading.textContent = "Erreur : " + error.message;
+      } finally {
+        busy = false;
+        send.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+  </html>
+  
